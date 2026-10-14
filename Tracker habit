@@ -1,0 +1,97 @@
+import csv
+from collections import Counter
+from datetime import datetime, timedelta
+
+CSV_FILE = "mood.csv"
+
+def record_mood():
+    mood = input("Как день? (happy/ok/sad): ").strip().lower()
+    if mood not in ["happy", "ok", "sad"]:
+        print(" Неверный ввод. Допустимы только: happy, ok, sad.")
+        return
+    
+    date = datetime.now().strftime("%Y-%m-%d")
+    
+    
+    file_exists = False
+    try:
+        with open(CSV_FILE, "r", encoding="utf-8"):
+            file_exists = True
+    except FileNotFoundError:
+        file_exists = False
+
+    with open(CSV_FILE, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists or f.tell() == 0:
+            writer.writerow(["date", "mood"])
+        writer.writerow([date, mood])
+    print(" Запись сохранена!")
+
+def show_analytics():
+    moods_list = []  
+    rows = []        
+
+    try:
+        with open(CSV_FILE, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            header = next(reader, None)  
+            for row in reader:
+                if len(row) >= 2:
+                    date_str, mood_val = row[0], row[1]
+                    moods_list.append(mood_val)
+                    rows.append((date_str, mood_val))
+    except FileNotFoundError:
+        print("Файл mood.csv не найден. Сначала добавь хотя бы одну запись (выбери пункт 1).")
+        return
+
+    if not moods_list:
+        print("В файле нет записей.")
+        return
+
+    counts = Counter(moods_list)
+    total = sum(counts.values())
+    happy_share = counts.get("happy", 0) / total if total else 0
+
+    
+    recent_moods = []
+    cutoff = datetime.now() - timedelta(days=7)
+
+    for date_str, mood_val in rows:
+        try:
+            d = datetime.strptime(date_str, "%Y-%m-%d")
+            if d >= cutoff:
+                recent_moods.append((d, mood_val))
+        except ValueError:
+            continue  
+
+    recent_moods.sort(key=lambda x: x[0])
+
+    print("\n" + "="*30)
+    print("АНАЛИТИКА НАСТРОЕНИЯ")
+    print("="*30)
+    print(f"Всего записей: {total}")
+    print(f"Happy: {counts.get('happy', 0)}")
+    print(f"Ok:    {counts.get('ok', 0)}")
+    print(f"Sad:   {counts.get('sad', 0)}")
+    print(f"Доля happy: {happy_share:.2%}")
+    print("-" * 30)
+    print("Последние 7 дней:")
+    if not recent_moods:
+        print("Нет данных за последние 7 дней.")
+    else:
+        for d, m in recent_moods:
+            print(f"{d.strftime('%Y-%m-%d')}: {m}")
+    print("="*30 + "\n")
+
+if __name__ == "__main__":
+    print("Трекер настроения: выбери действие")
+    print("1. Записать настроение за сегодня")
+    print("2. Показать аналитику")
+    choice = input("Введи 1 или 2: ").strip()
+    
+    if choice == "1":
+        record_mood()
+    elif choice == "2":
+        show_analytics()
+    else:
+        print(" Неверный выбор. Запусти снова и выбери 1 или 2.")
